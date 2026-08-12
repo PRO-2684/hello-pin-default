@@ -1,0 +1,11 @@
+d2903e61d6677011cb6ebb372a6c8d7e8a8db92b97115c4363b41c898cdc5c0b  ./HANDOFF.md
+6f7a9e23ad36f94999f77e2971bfe876f931b40f50f1999f51d273928d5eb391  ./new-mod-template.wh.cpp
+33489f6ffb9bf860304c9a987618f7ea1b4555640a3ab536222390fb10b4f4d7  ./sources/Creating-a-new-mod.md
+fc26e1a3c180adea95ad706590f8b603c059d734d385dfe264b1c8ac265a36fb  ./sources/en.json
+ef55e4c3b870c2a4ce6cfbee61cd0039c609de1b6a63ca7e3e66e13fa557d299  ./sources/windhawk/uxtheme-hook.wh.cpp
+92e2a750e24bdb24364c1acd62a3eabd84252b094a08583c9a4cea90db43a07a  ./sources/windhawk/win7-login-fade.wh.cpp
+438954dc7a628c1ecff95345dacc9bc4cbe8ce5dac18e3899cd3609f52d4bc69  ./sources/windows/CredProvCommonCore.dll
+08802bace2843581ca154614364d3e06897b55818a24080fa2ac6fe23e61012e  ./sources/windows/CredProvDataModel.dll
+0491edb04bf8f6a39b676bff46a3449ac6a2c859c5f71e054f20b02697f30323  ./sources/windows/LogonUI.exe
+cdc668cba2b05e731bd5233e8887535430888eb950e4839b0733e60148e53356  ./sources/windows/authui.dll
+12253e42f93d9c2a941ad3b35fda9cdfcb2f24f54c1d40bd5da12d70a7194ad6  ./sources/windows/logoncli.dll

@@ -1,0 +1,13 @@
+# Local editor state
+.idea/
+.vs/
+*.suo
+*.user
+
+# Generated build output
+build/
+dist/
+
+# Windows metadata
+Desktop.ini
+Thumbs.db
