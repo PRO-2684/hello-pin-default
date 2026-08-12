@@ -17,7 +17,8 @@ fingerprint sensor  -> biometric authentication remains active
 - Windows: `10.0.26200.9168`
 - `CredProvDataModel.dll`: `10.0.26100.8972`
 - Windhawk: `1.7.3` x86-64
-- Diagnostic mod: `hello-pin-default-debug` version `0.2`
+- Focused selection trace: `hello-pin-default-debug` version `0.2`
+- Provider-identity trace prepared: version `0.3`
 
 ## Symbol discovery
 
@@ -120,8 +121,8 @@ CCredentialData::get_ProviderId(GUID*)
 CCredentialData::GetClsid(GUID*)
 ```
 
-The next diagnostic phase will trace these getters and correlate their `this`
-pointer with the known PIN object (`...9868`).
+Diagnostic version `0.3` traces these getters. The next capture will correlate
+their `this` pointers with the known PIN object (`...9868`).
 
 ## Current working hypothesis
 

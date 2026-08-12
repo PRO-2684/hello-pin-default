@@ -2,7 +2,7 @@
 // @id              hello-pin-default-debug
 // @name            Hello PIN default diagnostics
 // @description     Passively traces LogonUI credential selection
-// @version         0.2
+// @version         0.3
 // @author          PRO-2684
 // @github          https://github.com/PRO-2684
 // @homepage        https://pro-2684.github.io/
@@ -16,7 +16,7 @@
 # Hello PIN default diagnostics
 
 This experimental, read-only mod observes `CredProvDataModel.dll` and installs
-four pass-through tracing hooks for default-provider and credential-selection
+six pass-through tracing hooks for provider identity and credential-selection
 transitions. It changes no arguments, return values, or authentication state.
 
 Add `LogonUI.exe` to Windhawk's process inclusion list before enabling the mod.
@@ -38,11 +38,14 @@ HANDLE g_stopEvent;
 HANDLE g_workerThread;
 
 using GetDefaultSelectedProviderId_t = HRESULT(__cdecl*)(void*, GUID*);
+using GetCredentialGuid_t = HRESULT(__cdecl*)(void*, GUID*);
 using SetDefaultSelection_t = HRESULT(__cdecl*)(void*, UINT, bool, int, bool);
 using SelectAsync_t = HRESULT(__cdecl*)(void*, int);
 using SetSelectedBucket_t = HRESULT(__cdecl*)(void*, void*, bool*);
 
 GetDefaultSelectedProviderId_t GetDefaultSelectedProviderId_Original;
+GetCredentialGuid_t GetProviderId_Original;
+GetCredentialGuid_t GetClsid_Original;
 SetDefaultSelection_t SetDefaultSelection_Original;
 SelectAsync_t SelectAsync_Original;
 SetSelectedBucket_t SetSelectedBucket_Original;
@@ -69,6 +72,26 @@ HRESULT __cdecl GetDefaultSelectedProviderId_Hook(void* self,
            self, static_cast<unsigned>(result));
     if (SUCCEEDED(result) && providerId) {
         LogGuid(L"defaultProvider", *providerId);
+    }
+    return result;
+}
+
+HRESULT __cdecl GetProviderId_Hook(void* self, GUID* providerId) {
+    HRESULT result = GetProviderId_Original(self, providerId);
+    Wh_Log(L"[trace] get_ProviderId this=%p result=0x%08X", self,
+           static_cast<unsigned>(result));
+    if (SUCCEEDED(result) && providerId) {
+        LogGuid(L"providerId", *providerId);
+    }
+    return result;
+}
+
+HRESULT __cdecl GetClsid_Hook(void* self, GUID* clsid) {
+    HRESULT result = GetClsid_Original(self, clsid);
+    Wh_Log(L"[trace] GetClsid this=%p result=0x%08X", self,
+           static_cast<unsigned>(result));
+    if (SUCCEEDED(result) && clsid) {
+        LogGuid(L"providerClsid", *clsid);
     }
     return result;
 }
@@ -162,6 +185,8 @@ bool InstallTraceHooks(HMODULE module) {
          nullptr},
         {L"?_SetSelectedBucket@CCredProvDataModel@@AEAAJPEAUICredentialBucket@CredProvData@Logon@UI@Internal@Windows@@PEA_N@Z",
          nullptr},
+        {L"?get_ProviderId@CCredentialData@@UEAAJPEAU_GUID@@@Z", nullptr},
+        {L"?GetClsid@CCredentialData@@UEAAJPEAU_GUID@@@Z", nullptr},
     };
 
     if (!ResolveSymbols(module, targets, ARRAYSIZE(targets))) {
@@ -183,7 +208,13 @@ bool InstallTraceHooks(HMODULE module) {
                            reinterpret_cast<void**>(&SelectAsync_Original)) &&
         Wh_SetFunctionHook(targets[3].address,
                            reinterpret_cast<void*>(SetSelectedBucket_Hook),
-                           reinterpret_cast<void**>(&SetSelectedBucket_Original));
+                           reinterpret_cast<void**>(&SetSelectedBucket_Original)) &&
+        Wh_SetFunctionHook(targets[4].address,
+                           reinterpret_cast<void*>(GetProviderId_Hook),
+                           reinterpret_cast<void**>(&GetProviderId_Original)) &&
+        Wh_SetFunctionHook(targets[5].address,
+                           reinterpret_cast<void*>(GetClsid_Hook),
+                           reinterpret_cast<void**>(&GetClsid_Original));
     if (!registered) {
         Wh_Log(L"Trace hook registration failed; hooks not applied");
         return false;
@@ -194,7 +225,7 @@ bool InstallTraceHooks(HMODULE module) {
         return false;
     }
 
-    Wh_Log(L"Four passive selection trace hooks installed");
+    Wh_Log(L"Six passive selection trace hooks installed");
     return true;
 }
 
