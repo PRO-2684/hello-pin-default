@@ -1,11 +1,9 @@
 // ==WindhawkMod==
 // @id              hello-pin-default
 // @name            Make Windows Hello PIN the default
-// @description     Selects the NGC PIN credential instead of WinBio by default
-// @version         0.1
-// @author          PRO-2684
-// @github          https://github.com/PRO-2684
-// @homepage        https://pro-2684.github.io/
+// @description     Selects PIN by default while keeping fingerprint authentication active
+// @version         0.2
+// @author          wh-windows-logon contributors
 // @include         LogonUI.exe
 // @license         MIT
 // ==/WindhawkMod==
@@ -14,14 +12,17 @@
 /*
 # Make Windows Hello PIN the default
 
-This experimental prototype changes the initial credential provider selected
+This mod changes the initial credential provider selected
 for a known user tile from the WinBio fingerprint provider to the NGC Windows
 Hello PIN provider. It calls Windows' original selection function first and
 only replaces an exact WinBio result; all other results remain unchanged.
 
-Fingerprint authentication is expected to remain active while PIN is selected,
-but this must be verified across lock, sign-in, boot, failure, and multi-user
-scenarios before the mod is considered production-safe.
+PIN typing and fingerprint authentication were both verified on lock/unlock.
+Fresh sign-in, boot, failure, and multi-user scenarios still require broader
+testing.
+
+This prototype assumes the selected user has an NGC PIN credential; it does not
+yet check provider availability per user.
 
 Add `LogonUI.exe` to Windhawk's process inclusion list. Disable
 `hello-pin-default-debug` before enabling this mod; do not run both together.
@@ -129,7 +130,7 @@ DWORD WINAPI HookWorker(LPVOID) {
 }  // namespace
 
 BOOL Wh_ModInit() {
-    Wh_Log(L"Init experimental PIN-default prototype");
+    Wh_Log(L"Init PIN-default mod");
 
     g_stopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (!g_stopEvent) {
