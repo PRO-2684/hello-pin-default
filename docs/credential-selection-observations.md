@@ -124,6 +124,20 @@ CCredentialData::GetClsid(GUID*)
 Diagnostic version `0.3` traces these getters. The next capture will correlate
 their `this` pointers with the known PIN object (`...9868`).
 
+The completed provider-identity trace is in
+[`reference/2026-08-12-16-44.txt`](../reference/2026-08-12-16-44.txt).
+It established the following runtime identities:
+
+```text
+Fingerprint credential  {BEC09223-B018-416D-A0AC-523971B639F5}  WinBio
+PIN credential          {D6886603-9D2F-4EB2-B667-1971041FA96B}  NGC
+```
+
+For both credentials, the `get_ProviderId` `this` pointer was `0x18` lower
+than the corresponding `SelectAsync` pointer. This consistent offset is
+compatible with COM interface-pointer adjustment and does not change the
+credential correlation.
+
 ## Current working hypothesis
 
 If the PIN credential's runtime provider GUID is identified, the smallest
@@ -134,6 +148,8 @@ behavioral change is likely to alter only the successful output of
 WinBio provider GUID -> runtime PIN provider GUID
 ```
 
-This hypothesis is not yet implemented. It must first be validated by the
-provider-ID trace, and the behavioral prototype must confirm that fingerprint
-authentication remains active while PIN is selected.
+The provider-ID trace validated this hypothesis. The behavioral prototype is
+implemented separately in `hello-pin-default.wh.cpp`; the diagnostic mod remains
+unchanged. The prototype must confirm that fingerprint authentication remains
+active while PIN is selected and must be tested against the full scenario
+matrix before production use.
