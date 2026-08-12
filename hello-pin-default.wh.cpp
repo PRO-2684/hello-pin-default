@@ -1,9 +1,11 @@
 // ==WindhawkMod==
 // @id              hello-pin-default
 // @name            Make Windows Hello PIN the default
-// @description     Selects PIN by default while keeping fingerprint authentication active
-// @version         0.2
-// @author          wh-windows-logon contributors
+// @description     Selects the NGC PIN credential instead of WinBio by default
+// @version         0.1
+// @author          PRO-2684
+// @github          https://github.com/PRO-2684
+// @homepage        https://pro-2684.github.io/
 // @include         LogonUI.exe
 // @license         MIT
 // ==/WindhawkMod==
