@@ -1,8 +1,8 @@
 // ==WindhawkMod==
 // @id              hello-pin-default-debug
 // @name            Hello PIN default diagnostics
-// @description     Logs LogonUI credential-model modules and selection-related public symbols
-// @version         0.1
+// @description     Passively traces LogonUI credential selection
+// @version         0.2
 // @author          PRO-2684
 // @github          https://github.com/PRO-2684
 // @homepage        https://pro-2684.github.io/
@@ -15,20 +15,19 @@
 /*
 # Hello PIN default diagnostics
 
-This experimental, read-only mod observes which credential-model DLLs load
-naturally in `LogonUI.exe`. When `CredProvDataModel.dll` appears, it queries
-Microsoft public symbols through Windhawk and logs names likely related to
-credential selection. It installs no hooks and changes no authentication state.
+This experimental, read-only mod observes `CredProvDataModel.dll` and installs
+four pass-through tracing hooks for default-provider and credential-selection
+transitions. It changes no arguments, return values, or authentication state.
 
 Add `LogonUI.exe` to Windhawk's process inclusion list before enabling the mod.
-After collecting the log, disable the mod. Symbol enumeration can take time on
-the first run while Windhawk populates its symbol cache.
+After collecting the log, disable the mod. The trace contains provider GUIDs,
+selection flags, and object addresses, but no credential contents.
 */
 // ==/WindhawkModReadme==
 
 #include <windows.h>
 
-#include <cwctype>
+#include <cwchar>
 
 namespace {
 
@@ -38,74 +37,165 @@ constexpr DWORD kPollAttempts = 120000 / kPollIntervalMs;
 HANDLE g_stopEvent;
 HANDLE g_workerThread;
 
-bool ContainsCaseInsensitive(PCWSTR text, PCWSTR needle) {
-    if (!text || !needle || !*needle) {
-        return false;
-    }
+using GetDefaultSelectedProviderId_t = HRESULT(__cdecl*)(void*, GUID*);
+using SetDefaultSelection_t = HRESULT(__cdecl*)(void*, UINT, bool, int, bool);
+using SelectAsync_t = HRESULT(__cdecl*)(void*, int);
+using SetSelectedBucket_t = HRESULT(__cdecl*)(void*, void*, bool*);
 
-    for (; *text; ++text) {
-        PCWSTR textCursor = text;
-        PCWSTR needleCursor = needle;
-        while (*textCursor && *needleCursor &&
-               std::towlower(*textCursor) == std::towlower(*needleCursor)) {
-            ++textCursor;
-            ++needleCursor;
-        }
-        if (!*needleCursor) {
-            return true;
-        }
-    }
+GetDefaultSelectedProviderId_t GetDefaultSelectedProviderId_Original;
+SetDefaultSelection_t SetDefaultSelection_Original;
+SelectAsync_t SelectAsync_Original;
+SetSelectedBucket_t SetSelectedBucket_Original;
 
-    return false;
+void LogGuid(PCWSTR label, const GUID& guid) {
+    Wh_Log(L"[trace] %s={%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+           label, static_cast<unsigned>(guid.Data1),
+           static_cast<unsigned>(guid.Data2),
+           static_cast<unsigned>(guid.Data3),
+           static_cast<unsigned>(guid.Data4[0]),
+           static_cast<unsigned>(guid.Data4[1]),
+           static_cast<unsigned>(guid.Data4[2]),
+           static_cast<unsigned>(guid.Data4[3]),
+           static_cast<unsigned>(guid.Data4[4]),
+           static_cast<unsigned>(guid.Data4[5]),
+           static_cast<unsigned>(guid.Data4[6]),
+           static_cast<unsigned>(guid.Data4[7]));
 }
 
-bool IsInterestingSymbol(PCWSTR symbol, PCWSTR decoratedSymbol) {
-    constexpr PCWSTR kKeywords[] = {
-        L"Credential", L"Provider", L"Select", L"Selected", L"Default",
-        L"Fallback",   L"Selector", L"Method", L"Bucket",   L"User",
-        L"PIN",        L"NGC",      L"Bio",
-    };
-
-    for (PCWSTR keyword : kKeywords) {
-        if (ContainsCaseInsensitive(symbol, keyword) ||
-            ContainsCaseInsensitive(decoratedSymbol, keyword)) {
-            return true;
-        }
+HRESULT __cdecl GetDefaultSelectedProviderId_Hook(void* self,
+                                                  GUID* providerId) {
+    HRESULT result = GetDefaultSelectedProviderId_Original(self, providerId);
+    Wh_Log(L"[trace] GetDefaultSelectedProviderId this=%p result=0x%08X",
+           self, static_cast<unsigned>(result));
+    if (SUCCEEDED(result) && providerId) {
+        LogGuid(L"defaultProvider", *providerId);
     }
-
-    return false;
+    return result;
 }
 
-void EnumerateInterestingSymbols(HMODULE module) {
+HRESULT __cdecl SetDefaultSelection_Hook(void* self,
+                                         UINT credentialCount,
+                                         bool userSelected,
+                                         int credentialsChangedState,
+                                         bool unknownFlag) {
+    Wh_Log(L"[trace] SetDefaultSelection this=%p count=%u userSelected=%u "
+           L"changedState=%d flag=%u",
+           self, credentialCount, userSelected, credentialsChangedState,
+           unknownFlag);
+    HRESULT result = SetDefaultSelection_Original(
+        self, credentialCount, userSelected, credentialsChangedState,
+        unknownFlag);
+    Wh_Log(L"[trace] SetDefaultSelection result=0x%08X",
+           static_cast<unsigned>(result));
+    return result;
+}
+
+HRESULT __cdecl SelectAsync_Hook(void* self, int flags) {
+    Wh_Log(L"[trace] SelectAsync this=%p flags=0x%08X", self,
+           static_cast<unsigned>(flags));
+    HRESULT result = SelectAsync_Original(self, flags);
+    Wh_Log(L"[trace] SelectAsync result=0x%08X",
+           static_cast<unsigned>(result));
+    return result;
+}
+
+HRESULT __cdecl SetSelectedBucket_Hook(void* self,
+                                       void* bucket,
+                                       bool* selectionChanged) {
+    Wh_Log(L"[trace] SetSelectedBucket this=%p bucket=%p", self, bucket);
+    HRESULT result =
+        SetSelectedBucket_Original(self, bucket, selectionChanged);
+    Wh_Log(L"[trace] SetSelectedBucket result=0x%08X changed=%d",
+           static_cast<unsigned>(result),
+           selectionChanged ? static_cast<int>(*selectionChanged) : -1);
+    return result;
+}
+
+struct SymbolTarget {
+    PCWSTR decoratedName;
+    void* address;
+};
+
+bool ResolveSymbols(HMODULE module, SymbolTarget* targets, size_t count) {
     WH_FIND_SYMBOL findData{};
     HANDLE search = Wh_FindFirstSymbol(module, nullptr, &findData);
     if (!search) {
         Wh_Log(L"CredProvDataModel.dll symbol enumeration could not start");
-        return;
+        return false;
     }
 
-    DWORD total = 0;
-    DWORD matched = 0;
+    size_t resolved = 0;
     do {
-        ++total;
-        if (!IsInterestingSymbol(findData.symbol, findData.symbolDecorated)) {
+        if (!findData.symbolDecorated) {
             continue;
         }
-
-        ++matched;
-        if (findData.symbol && findData.symbolDecorated) {
-            Wh_Log(L"Symbol %p: %s | decorated: %s", findData.address,
-                   findData.symbol, findData.symbolDecorated);
-        } else {
-            Wh_Log(L"Symbol %p: %s", findData.address,
-                   findData.symbol ? findData.symbol
-                                   : findData.symbolDecorated);
+        for (size_t i = 0; i < count; ++i) {
+            if (!targets[i].address &&
+                std::wcscmp(findData.symbolDecorated,
+                            targets[i].decoratedName) == 0) {
+                targets[i].address = findData.address;
+                ++resolved;
+                Wh_Log(L"Resolved trace symbol %s at %p",
+                       targets[i].decoratedName, findData.address);
+                break;
+            }
         }
     } while (Wh_FindNextSymbol(search, &findData));
 
     Wh_FindCloseSymbol(search);
-    Wh_Log(L"CredProvDataModel.dll symbols: %lu matched out of %lu", matched,
-           total);
+    if (resolved != count) {
+        Wh_Log(L"Resolved %zu of %zu trace symbols; no hooks installed",
+               resolved, count);
+        return false;
+    }
+
+    return true;
+}
+
+bool InstallTraceHooks(HMODULE module) {
+    SymbolTarget targets[] = {
+        {L"?v_GetDefaultSelectedProviderId@CUserData@@MEAAJPEAU_GUID@@@Z",
+         nullptr},
+        {L"?_SetDefaultSelection@CCredProvDataModel@@AEAAJI_NW4CREDENTIALSCHANGED_STATE@@0@Z",
+         nullptr},
+        {L"?SelectAsync@CCredentialData@@UEAAJW4TILE_SELECTION_FLAGS@@@Z",
+         nullptr},
+        {L"?_SetSelectedBucket@CCredProvDataModel@@AEAAJPEAUICredentialBucket@CredProvData@Logon@UI@Internal@Windows@@PEA_N@Z",
+         nullptr},
+    };
+
+    if (!ResolveSymbols(module, targets, ARRAYSIZE(targets))) {
+        return false;
+    }
+
+    bool registered =
+        Wh_SetFunctionHook(targets[0].address,
+                           reinterpret_cast<void*>(
+                               GetDefaultSelectedProviderId_Hook),
+                           reinterpret_cast<void**>(
+                               &GetDefaultSelectedProviderId_Original)) &&
+        Wh_SetFunctionHook(
+            targets[1].address,
+            reinterpret_cast<void*>(SetDefaultSelection_Hook),
+            reinterpret_cast<void**>(&SetDefaultSelection_Original)) &&
+        Wh_SetFunctionHook(targets[2].address,
+                           reinterpret_cast<void*>(SelectAsync_Hook),
+                           reinterpret_cast<void**>(&SelectAsync_Original)) &&
+        Wh_SetFunctionHook(targets[3].address,
+                           reinterpret_cast<void*>(SetSelectedBucket_Hook),
+                           reinterpret_cast<void**>(&SetSelectedBucket_Original));
+    if (!registered) {
+        Wh_Log(L"Trace hook registration failed; hooks not applied");
+        return false;
+    }
+
+    if (!Wh_ApplyHookOperations()) {
+        Wh_Log(L"Trace hook application failed");
+        return false;
+    }
+
+    Wh_Log(L"Four passive selection trace hooks installed");
+    return true;
 }
 
 DWORD WINAPI DiagnosticWorker(LPVOID) {
@@ -135,7 +225,7 @@ DWORD WINAPI DiagnosticWorker(LPVOID) {
         }
 
         if (dataModel) {
-            EnumerateInterestingSymbols(dataModel);
+            InstallTraceHooks(dataModel);
             return 0;
         }
 
@@ -152,7 +242,7 @@ DWORD WINAPI DiagnosticWorker(LPVOID) {
 }  // namespace
 
 BOOL Wh_ModInit() {
-    Wh_Log(L"Init (diagnostic only; no hooks or authentication changes)");
+    Wh_Log(L"Init (passive trace only; no authentication changes)");
 
     g_stopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (!g_stopEvent) {
@@ -175,7 +265,13 @@ BOOL Wh_ModInit() {
 
 void Wh_ModUninit() {
     Wh_Log(L"Uninit");
+    if (g_stopEvent) {
+        CloseHandle(g_stopEvent);
+        g_stopEvent = nullptr;
+    }
+}
 
+void Wh_ModBeforeUninit() {
     if (g_stopEvent) {
         SetEvent(g_stopEvent);
     }
@@ -183,9 +279,5 @@ void Wh_ModUninit() {
         WaitForSingleObject(g_workerThread, INFINITE);
         CloseHandle(g_workerThread);
         g_workerThread = nullptr;
-    }
-    if (g_stopEvent) {
-        CloseHandle(g_stopEvent);
-        g_stopEvent = nullptr;
     }
 }
