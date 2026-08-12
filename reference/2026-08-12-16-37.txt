@@ -1,0 +1,31 @@
+DbgViewMini v1.0.4
+Listening for OutputDebugString messages...
+16:37:15.350 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [245:Wh_ModInit]: Init (passive trace only; no authentication changes)
+16:37:15.356 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [211:DiagnosticWorker]: Watching for credential-model modules for up to 120 seconds
+16:37:15.611 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [220:DiagnosticWorker]: Naturally loaded: CredProvCommonCore.dll at 00007FFB81320000
+16:37:15.866 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [220:DiagnosticWorker]: Naturally loaded: CredProvDataModel.dll at 00007FFB78B20000
+16:37:15.898 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [139:ResolveSymbols]: Resolved trace symbol ?_SetSelectedBucket@CCredProvDataModel@@AEAAJPEAUICredentialBucket@CredProvData@Logon@UI@Internal@Windows@@PEA_N@Z at 00007FFB78B851CC
+16:37:15.929 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [139:ResolveSymbols]: Resolved trace symbol ?v_GetDefaultSelectedProviderId@CUserData@@MEAAJPEAU_GUID@@@Z at 00007FFB78B56CB0
+16:37:15.943 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [139:ResolveSymbols]: Resolved trace symbol ?_SetDefaultSelection@CCredProvDataModel@@AEAAJI_NW4CREDENTIALSCHANGED_STATE@@0@Z at 00007FFB78B43680
+16:37:15.945 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [139:ResolveSymbols]: Resolved trace symbol ?SelectAsync@CCredentialData@@UEAAJW4TILE_SELECTION_FLAGS@@@Z at 00007FFB78B51660
+16:37:15.965 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [197:InstallTraceHooks]: Four passive selection trace hooks installed
+16:37:15.968 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [69:GetDefaultSelectedProviderId_Hook]: [trace] GetDefaultSelectedProviderId this=000002D248F44A88 result=0x00000000
+16:37:15.968 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [62:LogGuid]: [trace] defaultProvider={BEC09223-B018-416D-A0AC-523971B639F5}
+16:37:15.968 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [95:SelectAsync_Hook]: [trace] SelectAsync this=000002D249006C88 flags=0x00000001
+16:37:15.968 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [98:SelectAsync_Hook]: [trace] SelectAsync result=0x00000000
+16:37:17.542 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [95:SelectAsync_Hook]: [trace] SelectAsync this=000002D249006C88 flags=0x00000001
+16:37:17.542 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [98:SelectAsync_Hook]: [trace] SelectAsync result=0x00000000
+16:37:19.192 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [95:SelectAsync_Hook]: [trace] SelectAsync this=000002D249006C88 flags=0x00000028
+16:37:19.192 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [98:SelectAsync_Hook]: [trace] SelectAsync result=0x00000000
+16:37:19.208 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [95:SelectAsync_Hook]: [trace] SelectAsync this=000002D249009868 flags=0x00000021
+16:37:19.208 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [98:SelectAsync_Hook]: [trace] SelectAsync result=0x00000000
+16:37:19.889 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [95:SelectAsync_Hook]: [trace] SelectAsync this=000002D249009868 flags=0x00000028
+16:37:19.889 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [98:SelectAsync_Hook]: [trace] SelectAsync result=0x00000000
+16:37:19.889 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [95:SelectAsync_Hook]: [trace] SelectAsync this=000002D249006C88 flags=0x00000021
+16:37:19.889 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [98:SelectAsync_Hook]: [trace] SelectAsync result=0x00000000
+16:37:20.673 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [95:SelectAsync_Hook]: [trace] SelectAsync this=000002D249006C88 flags=0x00000028
+16:37:20.673 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [98:SelectAsync_Hook]: [trace] SelectAsync result=0x00000000
+16:37:20.673 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [95:SelectAsync_Hook]: [trace] SelectAsync this=000002D249009868 flags=0x00000021
+16:37:20.673 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [98:SelectAsync_Hook]: [trace] SelectAsync result=0x00000000
+16:37:22.780 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [84:SetDefaultSelection_Hook]: [trace] SetDefaultSelection this=000002D243F17620 count=17 userSelected=1 changedState=0 flag=0
+16:37:22.780 3208 LogonUI.exe  [WH] [local@hello-pin-default-debug] [89:SetDefaultSelection_Hook]: [trace] SetDefaultSelection result=0x00000000
