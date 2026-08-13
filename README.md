@@ -9,6 +9,17 @@ Start typing       -> input goes directly to the PIN field
 Touch fingerprint  -> biometric authentication still works
 ```
 
+## Why
+
+You opened your laptop and pressed your finger on the sensor. It failed to
+recognize. You start typing your PIN, but nothing happens because Windows still
+has the fingerprint credential selected. To continue, you must open **Sign-in
+options**, choose PIN, and then type it.
+
+That fallback should not require extra clicks. With this mod, the PIN field is
+ready from the start, so typing works immediately. The fingerprint reader stays
+active too, so a successful touch still signs you in normally.
+
 ## Install
 
 1. In Windhawk's advanced settings, add `LogonUI.exe` to the process inclusion
