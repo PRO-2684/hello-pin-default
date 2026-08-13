@@ -13,8 +13,11 @@ Touch fingerprint  -> biometric authentication still works
 
 You opened your laptop and pressed your finger on the sensor. It failed to
 recognize. You start typing your PIN, but nothing happens because Windows still
-has the fingerprint credential selected. To continue, you must open **Sign-in
-options**, choose PIN, and then type it.
+has the fingerprint credential selected. To continue, you must:
+
+1. open "Sign-in options",
+2. choose PIN,
+3. type it.
 
 That fallback should not require extra clicks. With this mod, the PIN field is
 ready from the start, so typing works immediately. The fingerprint reader stays
