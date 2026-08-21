@@ -26,9 +26,8 @@ testing.
 This prototype assumes the selected user has an NGC PIN credential; it does not
 yet check provider availability per user.
 
-Add `LogonUI.exe` to Windhawk's process inclusion list. Disable
-`hello-pin-default-debug` before enabling this mod; do not run both together.
-Disable this mod to roll back immediately.
+Add `LogonUI.exe` to Windhawk's process inclusion list. Disable this mod to
+roll back immediately.
 */
 // ==/WindhawkModReadme==
 

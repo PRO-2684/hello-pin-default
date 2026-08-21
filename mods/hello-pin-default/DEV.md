@@ -3,15 +3,15 @@
 ## Repository layout
 
 ```text
-hello-pin-default.wh.cpp              working behavioral mod
-tools/windhawk-api-stub.h              local syntax-check declarations
-research/hello-pin-default-debug.wh.cpp passive diagnostic mod
-research/logs/                         captured runtime evidence
-research/archive/                      original binaries, sources, and plans
+mods/hello-pin-default/hello-pin-default.wh.cpp  self-contained Windhawk mod
+mods/hello-pin-default/README.md                   user documentation
+mods/hello-pin-default/DEV.md                      development notes
+tools/windhawk-api-stub.h                          local syntax-check declarations
 ```
 
-Only `README.md` is user-facing. This file records implementation, validation,
-and maintenance details.
+The root `README.md` lists all mods in the collection. The per-mod `README.md`
+is user-facing; this file records implementation, validation, and maintenance
+details.
 
 ## Behavior and architecture
 
@@ -46,10 +46,8 @@ registration, and application failures leave authentication behavior untouched.
 
 ### Symbol discovery
 
-The initial diagnostic enumerated 7,502 symbols from
-`CredProvDataModel.dll`; 3,693 matched a broad credential-selection filter.
-The full output is
-[`research/logs/2026-08-12-16-25.txt`](../research/logs/2026-08-12-16-25.txt).
+The diagnostic enumerated 7,502 symbols from `CredProvDataModel.dll`; 3,693
+matched a broad credential-selection filter.
 
 Passive hooks then traced:
 
@@ -64,8 +62,6 @@ CCredentialData::GetClsid(GUID*)
 
 ### Initial selection
 
-The focused selection trace is
-[`research/logs/2026-08-12-16-37.txt`](../research/logs/2026-08-12-16-37.txt).
 Windows returned WinBio from `v_GetDefaultSelectedProviderId`, then selected
 the fingerprint credential with `SelectAsync(0x01)`.
 
@@ -81,9 +77,7 @@ have not been decoded. `_SetSelectedBucket` was not observed on this path.
 
 ### Provider identity
 
-The provider trace is
-[`research/logs/2026-08-12-16-44.txt`](../research/logs/2026-08-12-16-44.txt).
-It correlated the runtime objects with:
+Runtime tracing correlated the credential objects with:
 
 ```text
 Fingerprint credential  {BEC09223-B018-416D-A0AC-523971B639F5}  WinBio
@@ -100,11 +94,10 @@ conclusively associated with NGC, not that provider.
 
 ### Behavioral validation
 
-The successful prototype trace is
-[`research/logs/2026-08-12-16-50.txt`](../research/logs/2026-08-12-16-50.txt).
-It shows the hook installed and the exact WinBio-to-NGC substitution executed.
-Manual testing confirmed that PIN typing and fingerprint authentication both
-worked seamlessly while PIN remained selected.
+The successful prototype trace showed the hook installed and the exact
+WinBio-to-NGC substitution executed. Manual testing confirmed that PIN typing
+and fingerprint authentication both worked seamlessly while PIN remained
+selected.
 
 ## Build checks
 
@@ -113,10 +106,8 @@ available through the retained minimal API stub:
 
 ```powershell
 g++ -std=c++23 -Wall -Wextra -Werror -fsyntax-only `
-  -include tools/windhawk-api-stub.h hello-pin-default.wh.cpp
-
-g++ -std=c++23 -Wall -Wextra -Werror -fsyntax-only `
-  -include tools/windhawk-api-stub.h research/hello-pin-default-debug.wh.cpp
+  -include tools/windhawk-api-stub.h `
+  mods/hello-pin-default/hello-pin-default.wh.cpp
 ```
 
 The stub is deliberately incomplete and does not replace compilation or runtime
@@ -137,7 +128,6 @@ testing in Windhawk.
 
 ## Safety rules
 
-- Never run the diagnostic and behavioral mods together.
 - Never disable or filter the WinBio provider.
 - Never inspect PIN fields, serialization buffers, or credential secrets.
 - Prefer exact public-PDB symbols over offsets.
