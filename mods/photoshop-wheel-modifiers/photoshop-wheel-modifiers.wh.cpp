@@ -14,40 +14,21 @@
 /*
 # Photoshop wheel modifier remap
 
-This diagnostic prototype targets these mappings:
+Remaps Photoshop's canvas mouse wheel controls to:
 
 - **Ctrl + wheel**: zoom
 - **Shift + wheel**: horizontal scroll
 - **Alt + wheel**: fast vertical scroll
 - **Alt + Shift + wheel**: fast horizontal scroll
 
-In addition to the initial remapping attempt, this build logs the input path
-Photoshop uses for wheel events:
+Keep **Preferences > Tools > Zoom With Scroll Wheel** disabled.
 
-- `GetMessageA/W` and `PeekMessageA/W`
-- `DispatchMessageA/W`
-- `RegisterRawInputDevices`
-- `GetRawInputData` and `GetRawInputBuffer`
-- modifier-state queries made while a `WM_MOUSEWHEEL` message is dispatched
-
-Relevant messages include `WM_MOUSEWHEEL`, `WM_MOUSEHWHEEL`, `WM_INPUT`,
-`WM_POINTERWHEEL`, and `WM_POINTERHWHEEL`.
-
-Keep Photoshop's **Preferences > Tools > Zoom With Scroll Wheel** option
-disabled while testing, since the intended mapping assumes Photoshop's normal
-modifier-based wheel behavior.
+See the [full README](https://github.com/PRO-2684/WindHawk-mods/tree/main/mods/photoshop-wheel-modifiers) for details, compatibility notes, and troubleshooting.
 */
 // ==/WindhawkModReadme==
 
 #include <windows.h>
 
-#ifndef WM_POINTERWHEEL
-#define WM_POINTERWHEEL 0x024E
-#endif
-
-#ifndef WM_POINTERHWHEEL
-#define WM_POINTERHWHEEL 0x024F
-#endif
 
 namespace {
 
@@ -60,8 +41,6 @@ constexpr ModifierMask kModifierAlt = 1u << 2;
 
 thread_local ModifierMask g_modifierOverride = kModifierNone;
 
-using DispatchMessageA_t = decltype(&DispatchMessageA);
-using DispatchMessageW_t = decltype(&DispatchMessageW);
 using GetMessageA_t = decltype(&GetMessageA);
 using GetMessageW_t = decltype(&GetMessageW);
 using PeekMessageA_t = decltype(&PeekMessageA);
@@ -69,12 +48,7 @@ using PeekMessageW_t = decltype(&PeekMessageW);
 using GetKeyState_t = decltype(&GetKeyState);
 using GetAsyncKeyState_t = decltype(&GetAsyncKeyState);
 using GetKeyboardState_t = decltype(&GetKeyboardState);
-using RegisterRawInputDevices_t = decltype(&RegisterRawInputDevices);
-using GetRawInputData_t = decltype(&GetRawInputData);
-using GetRawInputBuffer_t = decltype(&GetRawInputBuffer);
 
-DispatchMessageA_t DispatchMessageA_Original;
-DispatchMessageW_t DispatchMessageW_Original;
 GetMessageA_t GetMessageA_Original;
 GetMessageW_t GetMessageW_Original;
 PeekMessageA_t PeekMessageA_Original;
@@ -82,9 +56,6 @@ PeekMessageW_t PeekMessageW_Original;
 GetKeyState_t GetKeyState_Original;
 GetAsyncKeyState_t GetAsyncKeyState_Original;
 GetKeyboardState_t GetKeyboardState_Original;
-RegisterRawInputDevices_t RegisterRawInputDevices_Original;
-GetRawInputData_t GetRawInputData_Original;
-GetRawInputBuffer_t GetRawInputBuffer_Original;
 
 const wchar_t* ModifierName(ModifierMask modifier) {
     switch (modifier) {
@@ -132,27 +103,6 @@ const wchar_t* VirtualKeyName(int virtualKey) {
         default:
             return L"other";
     }
-}
-
-const wchar_t* MessageName(UINT message) {
-    switch (message) {
-        case WM_MOUSEWHEEL:
-            return L"WM_MOUSEWHEEL";
-        case WM_MOUSEHWHEEL:
-            return L"WM_MOUSEHWHEEL";
-        case WM_INPUT:
-            return L"WM_INPUT";
-        case WM_POINTERWHEEL:
-            return L"WM_POINTERWHEEL";
-        case WM_POINTERHWHEEL:
-            return L"WM_POINTERHWHEEL";
-        default:
-            return nullptr;
-    }
-}
-
-bool IsDiagnosticMessage(UINT message) {
-    return MessageName(message) != nullptr;
 }
 
 bool IsModifierKey(int virtualKey) {
@@ -223,7 +173,7 @@ void GetWindowClass(HWND hwnd, wchar_t* buffer, int bufferChars) {
 }
 
 void LogMessage(const wchar_t* stage, const MSG* message) {
-    if (!message || !IsDiagnosticMessage(message->message)) {
+    if (!message || message->message != WM_MOUSEWHEEL) {
         return;
     }
 
@@ -231,8 +181,7 @@ void LogMessage(const wchar_t* stage, const MSG* message) {
     GetWindowClass(message->hwnd, className, ARRAYSIZE(className));
 
     const UINT mouseKeyState = LOWORD(message->wParam);
-    const short wheelDelta =
-        static_cast<short>(HIWORD(message->wParam));
+    const short wheelDelta = static_cast<short>(HIWORD(message->wParam));
 
     const bool ctrlFromMessage = (mouseKeyState & MK_CONTROL) != 0;
     const bool shiftFromMessage = (mouseKeyState & MK_SHIFT) != 0;
@@ -247,10 +196,10 @@ void LogMessage(const wchar_t* stage, const MSG* message) {
         KeyDownFromState(GetAsyncKeyState_Original(VK_MENU));
 
     Wh_Log(
-        L"%s %s hwnd=0x%p class=\"%s\" wParam=0x%llX lParam=0x%llX "
-        L"delta=%d msgKeys=[ctrl=%d shift=%d] physical=[ctrl=%d shift=%d alt=%d]",
+        L"%s WM_MOUSEWHEEL hwnd=0x%p class=\"%s\" wParam=0x%llX "
+        L"lParam=0x%llX delta=%d msgKeys=[ctrl=%d shift=%d] "
+        L"physical=[ctrl=%d shift=%d alt=%d]",
         stage,
-        MessageName(message->message),
         message->hwnd,
         className,
         static_cast<unsigned long long>(message->wParam),
@@ -461,16 +410,6 @@ void RemapRetrievedWheelMessage(MSG* message, const wchar_t* source) {
         ModifierName(g_modifierOverride));
 }
 
-LRESULT WINAPI DispatchMessageA_Hook(const MSG* message) {
-    LogMessage(L"DispatchMessageA", message);
-    return DispatchMessageA_Original(message);
-}
-
-LRESULT WINAPI DispatchMessageW_Hook(const MSG* message) {
-    LogMessage(L"DispatchMessageW", message);
-    return DispatchMessageW_Original(message);
-}
-
 BOOL WINAPI GetMessageA_Hook(LPMSG message,
                              HWND hwnd,
                              UINT messageFilterMin,
@@ -553,111 +492,6 @@ BOOL WINAPI PeekMessageW_Hook(LPMSG message,
     return result;
 }
 
-BOOL WINAPI RegisterRawInputDevices_Hook(PCRAWINPUTDEVICE rawInputDevices,
-                                         UINT numDevices,
-                                         UINT size) {
-    Wh_Log(
-        L"RegisterRawInputDevices: count=%u size=%u",
-        numDevices,
-        size);
-
-    if (rawInputDevices) {
-        for (UINT i = 0; i < numDevices; ++i) {
-            const RAWINPUTDEVICE& device = rawInputDevices[i];
-            Wh_Log(
-                L"  raw device[%u]: usagePage=0x%04X usage=0x%04X "
-                L"flags=0x%08X target=0x%p",
-                i,
-                device.usUsagePage,
-                device.usUsage,
-                device.dwFlags,
-                device.hwndTarget);
-        }
-    }
-
-    BOOL result =
-        RegisterRawInputDevices_Original(rawInputDevices, numDevices, size);
-    Wh_Log(
-        L"RegisterRawInputDevices result=%d gle=%u",
-        result,
-        result ? 0 : GetLastError());
-    return result;
-}
-
-void LogRawMouse(const wchar_t* source, const RAWMOUSE& mouse) {
-    const bool wheel = (mouse.usButtonFlags & RI_MOUSE_WHEEL) != 0;
-#ifdef RI_MOUSE_HWHEEL
-    const bool horizontalWheel =
-        (mouse.usButtonFlags & RI_MOUSE_HWHEEL) != 0;
-#else
-    const bool horizontalWheel = false;
-#endif
-
-    if (!wheel && !horizontalWheel) {
-        return;
-    }
-
-    Wh_Log(
-        L"%s raw mouse wheel: flags=0x%04X buttonFlags=0x%04X "
-        L"buttonData=%d last=(%ld,%ld) extra=0x%08X",
-        source,
-        mouse.usFlags,
-        mouse.usButtonFlags,
-        static_cast<int>(static_cast<short>(mouse.usButtonData)),
-        mouse.lLastX,
-        mouse.lLastY,
-        mouse.ulExtraInformation);
-}
-
-UINT WINAPI GetRawInputData_Hook(HRAWINPUT rawInput,
-                                 UINT command,
-                                 LPVOID data,
-                                 PUINT size,
-                                 UINT sizeHeader) {
-    UINT result =
-        GetRawInputData_Original(rawInput, command, data, size, sizeHeader);
-
-    if (command == RID_INPUT &&
-        data &&
-        result != static_cast<UINT>(-1) &&
-        result >= sizeof(RAWINPUTHEADER)) {
-        const RAWINPUT* input = static_cast<const RAWINPUT*>(data);
-        if (input->header.dwType == RIM_TYPEMOUSE) {
-            LogRawMouse(L"GetRawInputData", input->data.mouse);
-        }
-    }
-
-    return result;
-}
-
-UINT WINAPI GetRawInputBuffer_Hook(PRAWINPUT data,
-                                   PUINT size,
-                                   UINT sizeHeader) {
-    UINT result = GetRawInputBuffer_Original(data, size, sizeHeader);
-
-    if (!data || result == static_cast<UINT>(-1)) {
-        return result;
-    }
-
-    PRAWINPUT input = data;
-    for (UINT i = 0; i < result; ++i) {
-        if (input->header.dwType == RIM_TYPEMOUSE) {
-            LogRawMouse(L"GetRawInputBuffer", input->data.mouse);
-        }
-        // Avoid MinGW's NEXTRAWINPUTBLOCK macro: Windhawk's winuser.h
-        // expands it in terms of QWORD, which isn't declared in this build.
-        constexpr ULONG_PTR kRawInputAlignment = sizeof(ULONGLONG);
-        const ULONG_PTR next =
-            reinterpret_cast<ULONG_PTR>(
-                reinterpret_cast<PBYTE>(input) + input->header.dwSize);
-        input = reinterpret_cast<PRAWINPUT>(
-            (next + kRawInputAlignment - 1) &
-            ~(kRawInputAlignment - 1));
-    }
-
-    return result;
-}
-
 bool InstallHooks() {
 #define INSTALL_HOOK(function)                                                   \
     do {                                                                         \
@@ -674,16 +508,11 @@ bool InstallHooks() {
     INSTALL_HOOK(GetMessageW);
     INSTALL_HOOK(PeekMessageA);
     INSTALL_HOOK(PeekMessageW);
-    INSTALL_HOOK(DispatchMessageA);
-    INSTALL_HOOK(DispatchMessageW);
 
     INSTALL_HOOK(GetKeyState);
     INSTALL_HOOK(GetAsyncKeyState);
     INSTALL_HOOK(GetKeyboardState);
 
-    INSTALL_HOOK(RegisterRawInputDevices);
-    INSTALL_HOOK(GetRawInputData);
-    INSTALL_HOOK(GetRawInputBuffer);
 
 #undef INSTALL_HOOK
     return true;
@@ -692,14 +521,14 @@ bool InstallHooks() {
 }  // namespace
 
 BOOL Wh_ModInit() {
-    Wh_Log(L"Init Photoshop wheel modifier remap (GetMessage diagnostic v6 (bitmask))");
+    Wh_Log(L"Init Photoshop wheel modifier remap");
 
     if (!InstallHooks()) {
         Wh_Log(L"Hook installation failed; behavior unchanged");
         return FALSE;
     }
 
-    Wh_Log(L"Diagnostic hooks installed");
+    Wh_Log(L"Hooks installed");
     return TRUE;
 }
 
