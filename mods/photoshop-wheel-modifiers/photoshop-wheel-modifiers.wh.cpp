@@ -19,11 +19,13 @@ Remaps Photoshop's canvas mouse wheel controls to:
 - **Ctrl + wheel**: zoom
 - **Shift + wheel**: horizontal scroll
 - **Alt + wheel**: fast vertical scroll
-- **Alt + Shift + wheel**: fast horizontal scroll
+
+Modifier combinations compose naturally; for example, **Alt + Shift + wheel**
+becomes fast horizontal scroll.
 
 Keep **Preferences > Tools > Zoom With Scroll Wheel** disabled.
 
-See the [full README](https://github.com/PRO-2684/WindHawk-mods/tree/main/mods/photoshop-wheel-modifiers) for details, compatibility notes, and troubleshooting.
+See the [full README](https://github.com/PRO-2684/WindHawk-mods/tree/main/mods/photoshop-wheel-modifiers) for details.
 */
 // ==/WindhawkModReadme==
 
@@ -328,18 +330,19 @@ ModifierMask GetPhysicalWheelModifier(WPARAM wParam) {
 }
 
 ModifierMask RemapModifier(ModifierMask modifier) {
-    switch (modifier) {
-        case kModifierCtrl:
-            return kModifierAlt;
-        case kModifierShift:
-            return kModifierCtrl;
-        case kModifierAlt:
-            return kModifierShift;
-        case kModifierShift | kModifierAlt:
-            return kModifierCtrl | kModifierShift;
-        default:
-            return kModifierNone;
+    ModifierMask result = kModifierNone;
+
+    if (modifier & kModifierCtrl) {
+        result |= kModifierAlt;
     }
+    if (modifier & kModifierShift) {
+        result |= kModifierCtrl;
+    }
+    if (modifier & kModifierAlt) {
+        result |= kModifierShift;
+    }
+
+    return result;
 }
 
 WPARAM RewriteWheelKeyState(WPARAM wParam, ModifierMask modifier) {
