@@ -17,12 +17,9 @@ You opened your laptop and pressed your finger on the sensor. It failed to recog
 
 That fallback should not require extra clicks. With this mod, the PIN field is ready from the start, so typing works immediately. The fingerprint reader stays active too, so a successful touch still signs you in normally.
 
-## Install
+## Before enabling
 
-1. In Windhawk's advanced settings, add `LogonUI.exe` to the process inclusion list.
-2. Create a new local mod and replace its source with [`hello-pin-default.wh.cpp`](hello-pin-default.wh.cpp).
-3. Compile and enable the mod.
-4. Lock Windows with <kbd>Win</kbd>+<kbd>L</kbd> and test both PIN entry and fingerprint unlock before relying on it at sign-in or boot.
+Add `LogonUI.exe` to Windhawk's process inclusion list, then follow the collection's [installation guide](../../README.md#install-a-mod). Lock Windows with <kbd>Win</kbd>+<kbd>L</kbd> and test both PIN entry and fingerprint unlock before relying on the mod at sign-in or boot.
 
 ## Compatibility and status
 
@@ -53,7 +50,3 @@ Every failed, null, or non-WinBio result is returned unchanged. The mod does not
 Disable or remove the mod in Windhawk. No registry policy or credential provider configuration is changed.
 
 Development details and research findings are in [`DEV.md`](DEV.md).
-
-## License
-
-[MIT](../../LICENSE)
